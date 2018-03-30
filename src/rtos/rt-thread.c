@@ -74,7 +74,7 @@ static const struct stack_register_offset rtos_rt_thread_arm926_stack_offsets[] 
        { -2,   32 },	/* sp   */
        { 0x38, 32 },	/* lr   */
        { 0x3c, 32 },	/* pc   */
-       { 0x00, 32 },	/* xPSR */
+       { 0x00, 32 },	/* SPSR */
 };
 
 
@@ -151,10 +151,6 @@ static int rt_thread_find_or_create_thread(struct rtos *rtos, symbol_address_t t
 	struct rt_thread_params *params = rtos->rtos_specific_params;
 	size_t thread_index;
 
-	for (thread_index = 0; thread_index < params->num_threads; thread_index++)
-		if (params->threads[thread_index] == thread_address)
-			goto found;
-
         rt_thread_params_thread_t params_thread_t = params->threads;
         rt_thread_params_thread_t params_thread_t_prev = NULL;
 	
@@ -170,12 +166,12 @@ static int rt_thread_find_or_create_thread(struct rtos *rtos, symbol_address_t t
 		}
 	}
 
-	params_thread_t = malloc(sizeof(rt_thread_params_thread));
+	params_thread_t = malloc(sizeof(struct rt_thread_params_thread));
         if (params_thread_t == NULL) {
 		LOG_ERROR("rt-thread: out of memory");
 		return ERROR_FAIL;
 	}
-	memset(params_thread_t, 0x00, sizeof(rt_thread_params_thread));
+	memset(params_thread_t, 0x00, sizeof(struct rt_thread_params_thread));
 	params_thread_t->address = thread_address;
 	params_thread_t->next = NULL;
 	params_thread_t->prev = params_thread_t_prev;
@@ -217,12 +213,13 @@ static int rt_thread_find_last_thread_address(struct rtos *rtos, symbol_address_
 	int retval;
 	size_t num;
 
-	/* read the thread list head */
-	symbol_address_t thread_list_address = 0;
 	symbol_address_t object_list_address = 0;
+	symbol_address_t thread_list_address = 0;
 	symbol_address_t thread_list_head_address = 0;
+	
+	/*get the object_list of rt_object_container */
 	retval = target_read_memory(rtos->target,
-			rtos->symbols[rt_thread_VAL_rt_object_container].address,
+			rtos->symbols[rt_thread_VAL_rt_object_container].address + params->rt_object_next_offset,
 			params->pointer_width,
 			1,
 			(void *)&object_list_address);
@@ -231,9 +228,6 @@ static int rt_thread_find_last_thread_address(struct rtos *rtos, symbol_address_
 		LOG_ERROR("rt-thread: failed to read object list address");
 		return retval;
 	}
-        
-	/*get the object_list of rt_object_container */
-        object_list_address -= params->rt_object_next_offset;
 
 	retval = target_read_memory(rtos->target,
 			object_list_address,
@@ -356,10 +350,11 @@ static int rt_thread_reset_handler(struct target *target, enum target_reset_mode
 		if (params_thread_t != NULL)
 		{
 	                rt_trhead_params_thread_t params_thread_t_next = params_thread_t->next;
-			free(params_thread_t_next);
+			free(params_thread_t);
 			params_thread_t = params_thread_t_next;
 		}
 	}
+	params->threads = NULL;
 	params->num_threads = 0;
 
 	return ERROR_OK;
@@ -444,7 +439,6 @@ static int rt_thread_update_threads(struct rtos *rtos)
 	}
 
 	symbol_address_t thread_object_container = 0;
-	/* read number of tasks */
 	retval = target_read_memory(rtos->target,
 			rtos->symbols[rt_thread_VAL_rt_object_container].address,
 			params->pointer_width,
@@ -455,10 +449,6 @@ static int rt_thread_update_threads(struct rtos *rtos)
 		return retval;
 	}
 
-	/*
-	 * uC/OS-III adds tasks in LIFO order; advance to the end of the
-	 * list and work backwards to preserve the intended order.
-	 */
 	symbol_address_t thread_address = 0;
 
 	retval = rt_thread_find_last_thread_address(rtos, &thread_address, &rtos->thread_count);
