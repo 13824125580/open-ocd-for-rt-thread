@@ -17,30 +17,28 @@
 extern "C" {
 #endif
 
-#if RT_THREAD_CFG_DBG_EN == 0
-#error "OS_CFG_DBG_EN is required to enable RTOS support for OpenOCD"
+#ifdef OFFSET_OF
+#undef OFFSET_OF
 #endif
 
 #define OFFSET_OF(type, member) ((rt_size_t)&(((type *)0)->member))
 
-#ifdef __GNUC__
-#define USED __attribute__((used))
-#else
-#define USED
-#endif
+const rt_size_t RT_USED openocd_rt_thread_name_offset = OFFSET_OF(struct rt_thread, name);
 
-const rt_size_t USED openocd_rt_thread_name_offset = OFFSET_OF(rt_thread, name);
+const rt_size_t RT_USED openocd_rt_thread_sp_offset = OFFSET_OF(struct rt_thread, sp);
 
-const rt_size_t USED openocd_rt_thread_sp_offset = OFFSET_OF(rt_thread, sp);
-const rt_size_t USED openocd_rt_thread_stat_offset = OFFSET_OF(rt_thread, stat);
-const rt_size_t USED openocd_rt_thread_current_priority_offset = OFFSET_OF(rt_thread, current_priority);
-const rt_size_t USED openocd_rt_thread_next_offset = OFFSET_OF(rt_thread, list) + OFFSET_OF(rt_list_t, next);
-const rt_size_t USED openocd_rt_thread_prev_offset = OFFSET_OF(rt_thread, list) + OFFSET_OF(rt_list_t, prev);
-const rt_size_t USED openocd_rt_object_prev_offset = OFFSET_OF(rt_object_information, object_list) + OFFSET_OF(rt_list_t, prev);
-const rt_size_t USED openocd_rt_object_next_offset = OFFSET_OF(rt_object_information, object_list) + OFFSET_OF(rt_list_t, next);
+const rt_size_t RT_USED openocd_rt_thread_stat_offset = OFFSET_OF(struct rt_thread, stat);
+
+const rt_size_t RT_USED openocd_rt_thread_current_priority_offset = OFFSET_OF(struct rt_thread, current_priority);
+
+const rt_size_t RT_USED openocd_rt_thread_next_offset = OFFSET_OF(struct rt_thread, list) + OFFSET_OF(rt_list_t, next);
+
+const rt_size_t RT_USED openocd_rt_thread_prev_offset = OFFSET_OF(struct rt_thread, list) + OFFSET_OF(rt_list_t, prev);
+
+const rt_size_t RT_USED openocd_rt_object_prev_offset = OFFSET_OF(struct rt_object_information, object_list) + OFFSET_OF(rt_list_t, prev);
+
+const rt_size_t RT_USED openocd_rt_object_next_offset = OFFSET_OF(struct rt_object_information, object_list) + OFFSET_OF(rt_list_t, next);
 
 #ifdef __cplusplus
 }
 #endif
-
-
