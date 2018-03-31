@@ -16,7 +16,6 @@ noinst_LTLIBRARIES += %D%/librtos.la
 	%D%/mqx.c \
 	%D%/uCOS-III.c \
 	%D%/rt-thread.c \
-	%D%/rt-thread.h \
 	%D%/rtos.h \
 	%D%/rtos_standard_stackings.h \
 	%D%/rtos_ecos_stackings.h \

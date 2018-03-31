@@ -26,9 +26,10 @@
 #include <rtos/rtos.h>
 #include <target/target.h>
 #include <target/target_type.h>
+#include <rtos/rtos_standard_stackings.h>
 
 #ifndef RT_THREAD_MAX_STRLEN
-#define RT_THREAD_MAX_STRLEN 64
+#define RT_THREAD_MAX_STRLEN 32
 #endif
 
 struct rt_thread_params_thread
@@ -36,7 +37,7 @@ struct rt_thread_params_thread
 	struct rt_thread_params_thread * next;
 	struct rt_thread_params_thread * prev;
 	symbol_address_t thread_address;
-}
+};
 typedef struct rt_thread_params_thread * rt_thread_params_thread_t; 
 
 struct rt_thread_params {
@@ -158,7 +159,7 @@ static int rt_thread_find_or_create_thread(struct rtos *rtos, symbol_address_t t
 	{
 		if (params_thread_t == NULL)
 			break;
-		if (params_thread_t->address == thread_address)
+		if (params_thread_t->thread_address == thread_address)
 			goto found;
 		else{
 			params_thread_t_prev = params_thread_t;
@@ -172,7 +173,7 @@ static int rt_thread_find_or_create_thread(struct rtos *rtos, symbol_address_t t
 		return ERROR_FAIL;
 	}
 	memset(params_thread_t, 0x00, sizeof(struct rt_thread_params_thread));
-	params_thread_t->address = thread_address;
+	params_thread_t->thread_address = thread_address;
 	params_thread_t->next = NULL;
 	params_thread_t->prev = params_thread_t_prev;
 
@@ -187,6 +188,7 @@ static int rt_thread_find_thread_address(struct rtos *rtos, threadid_t threadid,
 {
 	struct rt_thread_params *params = rtos->rtos_specific_params;
 	size_t thread_index;
+	size_t num;
 
 	thread_index = threadid - params->threadid_start;
 	if (thread_index >= params->num_threads) {
@@ -195,11 +197,11 @@ static int rt_thread_find_thread_address(struct rtos *rtos, threadid_t threadid,
 	}
         
         rt_thread_params_thread_t params_thread_t = params->threads;
-	for (; thread_index >= 0; thread_index--)
+	for (num = 0; num < thread_index; num++)
 	{
 		if (params_thread_t != NULL)
 		{
-                        *thread_address = params_thread_t->address;
+                        *thread_address = params_thread_t->thread_address;
 			params_thread_t = params_thread_t->next;
 		}
 	}
@@ -207,7 +209,7 @@ static int rt_thread_find_thread_address(struct rtos *rtos, threadid_t threadid,
 	return ERROR_OK;
 }
 
-static int rt_thread_find_last_thread_address(struct rtos *rtos, symbol_address_t *thread_address, size_t * thread_count)
+static int rt_thread_find_last_thread_address(struct rtos *rtos, symbol_address_t *thread_address, int * thread_count)
 {
 	struct rt_thread_params *params = rtos->rtos_specific_params;
 	int retval;
@@ -241,14 +243,12 @@ static int rt_thread_find_last_thread_address(struct rtos *rtos, symbol_address_
 	}
  
 	/* get the the first thread address */
-	thread_list_address -= params->rt_thread_next_offset;
+	thread_list_address -= params->thread_next_offset;
 
 	num = 0;
 	thread_list_head_address = thread_list_address;
 	/* advance to end of thread list */
 	do {
-		*thread_address = thread_list_address;
-
 		retval = target_read_memory(rtos->target,
 				thread_list_address + params->thread_next_offset,
 				params->pointer_width,
@@ -259,7 +259,7 @@ static int rt_thread_find_last_thread_address(struct rtos *rtos, symbol_address_
 			return retval;
 		}
                 thread_list_address -= params->thread_next_offset;
-
+		*thread_address = thread_list_address;
 		num++;
 	} while (thread_list_address != 0 && thread_list_address != thread_list_head_address);
         
@@ -341,7 +341,7 @@ static int rt_thread_reset_handler(struct target *target, enum target_reset_mode
 	struct rt_thread_params *params = target->rtos->rtos_specific_params;
         size_t thread_index;
         
-	rt_trhead_params_thread_t params_thread_t = params->threads;
+	rt_thread_params_thread_t params_thread_t = params->threads;
 
 	params->thread_offsets_updated = false;
 	
@@ -349,7 +349,7 @@ static int rt_thread_reset_handler(struct target *target, enum target_reset_mode
 	{
 		if (params_thread_t != NULL)
 		{
-	                rt_trhead_params_thread_t params_thread_t_next = params_thread_t->next;
+	                rt_thread_params_thread_t params_thread_t_next = params_thread_t->next;
 			free(params_thread_t);
 			params_thread_t = params_thread_t_next;
 		}
@@ -391,33 +391,7 @@ static int rt_thread_update_threads(struct rtos *rtos)
 
 	/* free previous thread details */
 	rtos_free_threadlist(rtos);
-
-	/* verify RTOS is running */
-	uint8_t rtos_running;
-
-	retval = target_read_u8(rtos->target,
-			rtos->symbols[rt_thread_VAL_rt_current_thread].address,
-			&rtos_running);
-	if (retval != ERROR_OK) {
-		LOG_ERROR("rt-thread: failed to read RTOS running");
-		return retval;
-	}
-
-	if (!rtos_running) {
-		rtos->thread_details = calloc(1, sizeof(struct thread_detail));
-		if (rtos->thread_details == NULL) {
-			LOG_ERROR("rt-thread: out of memory");
-			return ERROR_FAIL;
-		}
-
-		rtos->thread_count = 1;
-		rtos->thread_details->threadid = 0;
-		rtos->thread_details->exists = true;
-		rtos->current_thread = 0;
-
-		return ERROR_OK;
-	}
-
+	
 	/* update thread offsets */
 	retval = rt_thread_update_thread_offsets(rtos);
 	if (retval != ERROR_OK) {
@@ -463,10 +437,10 @@ static int rt_thread_update_threads(struct rtos *rtos)
 		return ERROR_FAIL;
 	}
 
-
 	for (int i = 0; i < rtos->thread_count; i++) {
 		struct thread_detail *thread_detail = &rtos->thread_details[i];
 		char thread_str_buffer[RT_THREAD_MAX_STRLEN + 1];
+		memset(thread_str_buffer, 0x00, sizeof(thread_str_buffer));
 
 		/* find or create new threadid */
 		retval = rt_thread_find_or_create_thread(rtos, thread_address, &thread_detail->threadid);
@@ -479,20 +453,7 @@ static int rt_thread_update_threads(struct rtos *rtos)
 			rtos->current_thread = thread_detail->threadid;
 
 		thread_detail->exists = true;
-
-		/* read thread name */
-		symbol_address_t thread_name_address = 0;
-
-		retval = target_read_memory(rtos->target,
-				thread_address + params->thread_name_offset,
-				params->pointer_width,
-				1,
-				(void *)&thread_name_address);
-		if (retval != ERROR_OK) {
-			LOG_ERROR("rt-thread: failed to name address");
-			return retval;
-		}
-
+		symbol_address_t thread_name_address = thread_address + params->thread_name_offset;
 		retval = target_read_buffer(rtos->target,
 				thread_name_address,
 				sizeof(thread_str_buffer),
@@ -505,6 +466,7 @@ static int rt_thread_update_threads(struct rtos *rtos)
 		thread_str_buffer[sizeof(thread_str_buffer) - 1] = '\0';
 		thread_detail->thread_name_str = strdup(thread_str_buffer);
 
+		printf("name = %s\n", thread_detail->thread_name_str);
 		/* read thread extra info */
 		uint8_t thread_state;
 		uint8_t thread_priority;
@@ -536,6 +498,7 @@ static int rt_thread_update_threads(struct rtos *rtos)
 				thread_state_str, thread_priority);
 		thread_detail->extra_info_str = strdup(thread_str_buffer);
 
+		printf("info_str = %s\n", thread_detail->extra_info_str);
 		/* read previous thread address */
 		retval = target_read_memory(rtos->target,
 				thread_address + params->thread_prev_offset,
