@@ -197,7 +197,7 @@ static int rt_thread_find_thread_address(struct rtos *rtos, threadid_t threadid,
 	size_t num;
 
 	thread_index = threadid - params->threadid_start;
-	thread_index = params->num_threads - thread_index;
+	thread_index = params->num_threads - thread_index - 1;
 
 	if (thread_index >= params->num_threads) {
 		LOG_ERROR("rt-thread: failed to find thread address");
@@ -531,6 +531,34 @@ static int rt_thread_update_threads(struct rtos *rtos)
 	memcpy(&rtos->thread_details[0], &rtos->thread_details[current_index], sizeof(struct thread_detail));
 	memcpy(&rtos->thread_details[current_index], &temp, sizeof(struct thread_detail));
    
+   struct rt_thread_params_thread * params_thread_first = NULL;
+   struct rt_thread_params_thread * params_thread_current = NULL;
+   struct rt_thread_params_thread * params_thread_next = params->threads;
+   for(i = 0; i < params->num_threads; i++)
+   {
+        if (params_thread_next == NULL)
+             break;
+
+        if (i == params->num_threads - 1)
+        {
+             params_thread_first = params_thread_next;
+        }
+        
+        if (i == params->num_threads - current_index - 1)
+        {
+             params_thread_current = params_thread_next;
+        }
+        params_thread_next = params_thread_next->next;
+    }
+
+    if( params_thread_first != NULL && params_thread_current != NULL)
+    {
+         struct rt_thread_params_thread temp;
+         memcpy(&temp, params_thread_first, sizeof(struct rt_thread_params_thread));
+         params_thread_first->address = params_thread_current->address;    
+         params_thread_current->address = temp.address;
+    }
+        
 	struct thread_detail *thread_detail = &rtos->thread_details[0];
 	printf("the first name = %s\n", thread_detail->thread_name_str);
 
