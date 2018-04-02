@@ -536,6 +536,8 @@ static int rt_thread_update_threads(struct rtos *rtos)
 
 	rtos->thread_details[current_index].threadid = rtos->thread_details[0].threadid;
 	rtos->thread_details[0].threadid = temp.threadid;
+	
+	rtos->current_thread = 0 + params->threadid_start; 
 
    
         struct rt_thread_params_thread * params_thread_first = NULL;
@@ -557,19 +559,26 @@ static int rt_thread_update_threads(struct rtos *rtos)
                  {
                          params_thread_current = params_thread_next;
                  }
-                  params_thread_next = params_thread_next->next;
+                 params_thread_next = params_thread_next->next;
          }
 
          if( params_thread_first != NULL && params_thread_current != NULL)
          {
+		 printf("vfkdl\n");
                  struct rt_thread_params_thread params_temp;
                  memcpy(&params_temp, params_thread_first, sizeof(struct rt_thread_params_thread));
                  params_thread_first->thread_address = params_thread_current->thread_address;    
                  params_thread_current->thread_address = params_temp.thread_address;
+		 
+		 printf("first = 0x%08x\n",(int)params_thread_first->thread_address);
+		 printf("current = 0x%08x\n",(int)params_thread_current->thread_address);
          }
         
 	struct thread_detail *thread_detail = &rtos->thread_details[0];
 	printf("the first name = %s\n", thread_detail->thread_name_str);
+	printf("the first address = 0x%08x\n", (int)params->threads->thread_address);
+		 
+	printf("rtos->thread = %d\n",(int)rtos->current_thread);
 
 	return ERROR_OK;
 }
@@ -582,6 +591,7 @@ static int rt_thread_get_thread_reg_list(struct rtos *rtos, threadid_t threadid,
 	/* find thread address for threadid */
 	symbol_address_t thread_address = 0;
 
+	printf("get reg list threadid = %d\n", (int)threadid);
 	retval = rt_thread_find_thread_address(rtos, threadid, &thread_address);
 	if (retval != ERROR_OK) {
 		LOG_ERROR("rt-thread: failed to find thread address");
