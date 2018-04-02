@@ -196,9 +196,11 @@ static int rt_thread_find_thread_address(struct rtos *rtos, threadid_t threadid,
 	size_t thread_index;
 	size_t num;
 
+	printf("num_threads = %d\n", (int)params->num_threads);
 	thread_index = threadid - params->threadid_start;
-	thread_index = params->num_threads - thread_index - 1;
+	thread_index = params->num_threads - thread_index;
 
+	printf("thread_index = %d\n", (int)thread_index);
 	if (thread_index >= params->num_threads) {
 		LOG_ERROR("rt-thread: failed to find thread address");
 		return ERROR_FAIL;
@@ -227,6 +229,7 @@ static int rt_thread_find_last_thread_address(struct rtos *rtos, symbol_address_
 
 	symbol_address_t object_list_address = 0;
 	symbol_address_t thread_list_address = 0;
+	//symbol_address_t thread_prev_address = 0;
 	symbol_address_t thread_list_head_address = 0;
 	
 	/*get the object_list of rt_object_container */
@@ -240,23 +243,14 @@ static int rt_thread_find_last_thread_address(struct rtos *rtos, symbol_address_
 		LOG_ERROR("rt-thread: failed to read object list address");
 		return retval;
 	}
-
-	retval = target_read_memory(rtos->target,
-			object_list_address,
-			params->pointer_width,
-			1,
-			(void *)&thread_list_address);
-
-	if (retval != ERROR_OK) {
-		LOG_ERROR("rt-thread: failed to read thread list address");
-		return retval;
-	}
- 
-	/* get the the first thread address */
-	thread_list_address -= params->thread_next_offset;
-
+	
+	thread_list_address = object_list_address - params->thread_next_offset;
 	num = 0;
 	thread_list_head_address = thread_list_address;
+	*thread_address = thread_list_address;
+	//thread_prev_address = thread_list_address;
+
+	printf("num=%d, thread_list_address = 0x%08x\n", (int)num, (int)thread_list_address);
 	/* advance to end of thread list */
 	do{
 	         retval = target_read_memory(rtos->target,
@@ -268,10 +262,18 @@ static int rt_thread_find_last_thread_address(struct rtos *rtos, symbol_address_
 			LOG_ERROR("rt-thread: failed to read next thread address");
 			return retval;
 		}
+		if ((rtos->symbols[rt_thread_VAL_rt_object_container].address + params->rt_object_next_offset) == thread_list_address){
+			num++;
+			break;
+		}
                 thread_list_address -= params->thread_next_offset;
+		//thread_prev_address = *thread_address;
 		*thread_address = thread_list_address;
 		num++;
+	        printf("num=%d, thread_list_address = 0x%08x\n", (int)num, (int)thread_list_address);
         } while (thread_list_address != 0 && thread_list_address != thread_list_head_address);
+        
+	//*thread_address = thread_prev_address;
 	*thread_count = num;
 	return ERROR_OK;
 }
@@ -526,40 +528,45 @@ static int rt_thread_update_threads(struct rtos *rtos)
 			return retval;
 		}
 	}
+
         struct thread_detail temp;
 	memcpy(&temp, &rtos->thread_details[0],sizeof(struct thread_detail));
 	memcpy(&rtos->thread_details[0], &rtos->thread_details[current_index], sizeof(struct thread_detail));
 	memcpy(&rtos->thread_details[current_index], &temp, sizeof(struct thread_detail));
+
+	rtos->thread_details[current_index].threadid = rtos->thread_details[0].threadid;
+	rtos->thread_details[0].threadid = temp.threadid;
+
    
-   struct rt_thread_params_thread * params_thread_first = NULL;
-   struct rt_thread_params_thread * params_thread_current = NULL;
-   struct rt_thread_params_thread * params_thread_next = params->threads;
+        struct rt_thread_params_thread * params_thread_first = NULL;
+        struct rt_thread_params_thread * params_thread_current = NULL;
+        struct rt_thread_params_thread * params_thread_next = params->threads;
 
-   size_t index;
-   for(index = 0; index < params->num_threads; index++)
-   {
-        if (params_thread_next == NULL)
-             break;
-
-        if (index == params->num_threads - 1)
+        size_t index;
+        for(index = 0; index < params->num_threads; index++)
         {
-             params_thread_first = params_thread_next;
-        }
+                 if (params_thread_next == NULL)
+                         break;
+
+                 if (index == params->num_threads - 1)
+                 {
+                         params_thread_first = params_thread_next;
+                 }
         
-        if (index == params->num_threads - current_index - 1)
-        {
-             params_thread_current = params_thread_next;
-        }
-        params_thread_next = params_thread_next->next;
-    }
+                 if (index == params->num_threads - current_index - 1)
+                 {
+                         params_thread_current = params_thread_next;
+                 }
+                  params_thread_next = params_thread_next->next;
+         }
 
-    if( params_thread_first != NULL && params_thread_current != NULL)
-    {
-         struct rt_thread_params_thread params_temp;
-         memcpy(&params_temp, params_thread_first, sizeof(struct rt_thread_params_thread));
-         params_thread_first->thread_address = params_thread_current->thread_address;    
-         params_thread_current->thread_address = params_temp.thread_address;
-    }
+         if( params_thread_first != NULL && params_thread_current != NULL)
+         {
+                 struct rt_thread_params_thread params_temp;
+                 memcpy(&params_temp, params_thread_first, sizeof(struct rt_thread_params_thread));
+                 params_thread_first->thread_address = params_thread_current->thread_address;    
+                 params_thread_current->thread_address = params_temp.thread_address;
+         }
         
 	struct thread_detail *thread_detail = &rtos->thread_details[0];
 	printf("the first name = %s\n", thread_detail->thread_name_str);
