@@ -59,28 +59,48 @@ struct rt_thread_params {
 };
 
 static const struct stack_register_offset rtos_rt_thread_arm926_stack_offsets[] = {
-       { 0x04, 32 },	/* r0   */
-       { 0x08, 32 },	/* r1   */
-       { 0x0c, 32 },	/* r2   */
-       { 0x10, 32 },	/* r3   */
-       { 0x14, 32 },	/* r4   */
-       { 0x18, 32 },	/* r5   */
-       { 0x1c, 32 },	/* r6   */
-       { 0x20, 32 },	/* r7   */
-       { 0x24, 32 },	/* r8   */
-       { 0x28, 32 },	/* r9   */
-       { 0x2c, 32 },	/* r10  */
-       { 0x30, 32 },	/* r11  */
-       { 0x34, 32 },	/* r12  */
+#if 0
+	{ 0x08, 32 },	/* r0   */
+       { 0x0c, 32 },	/* r1   */
+       { 0x10, 32 },	/* r2   */
+       { 0x14, 32 },	/* r3   */
+       { 0x18, 32 },	/* r4   */
+       { 0x1c, 32 },	/* r5   */
+       { 0x20, 32 },	/* r6   */
+       { 0x24, 32 },	/* r7   */
+       { 0x28, 32 },	/* r8   */
+       { 0x2c, 32 },	/* r9   */
+       { 0x30, 32 },	/* r10  */
+       { 0x34, 32 },	/* r11  */
+       { 0x38, 32 },	/* r12  */
        { -2,   32 },	/* sp   */
-       { 0x38, 32 },	/* lr   */
-       { 0x3c, 32 },	/* pc   */
-       { 0x00, 32 },	/* SPSR */
+       { 0x3c, 32 },	/* lr   */
+       { 0x40, 32 },	/* pc   */
+       { 0x04, 32 },	/* SPSR */
+#endif
+    { 0x08, 32 },	/* r0   */
+       { 0x0c, 32 },	/* r1   */
+       { 0x10, 32 },	/* r2   */
+       { 0x14, 32 },	/* r3   */
+       { 0x18, 32 },	/* r4   */
+       { 0x1c, 32 },	/* r5   */
+       { 0x20, 32 },	/* r6   */
+       { 0x24, 32 },	/* r7   */
+       { 0x28, 32 },	/* r8   */
+       { 0x2c, 32 },	/* r9   */
+       { 0x30, 32 },	/* r10  */
+       { 0x34, 32 },	/* r11  */
+       { 0x38, 32 },	/* r12  */
+       { -2,   32 },	/* sp   */
+       { 0x3c, 32 },	/* lr   */
+       { 0x40, 32 },	/* pc   */
+       { 0x04, 32 },	/* SPSR */
+
 };
 
 
 const struct rtos_register_stacking rtos_rt_thread_arm926_stacking = {
-       0x40,										/* stack_registers_size */
+       0x44,										/* stack_registers_size */
        -1,									        /* stack_growth_direction */
        ARRAY_SIZE(rtos_rt_thread_arm926_stack_offsets),	                                /* num_output_registers */
        rtos_generic_stack_align8,				                        /* stack_alignment */
@@ -573,7 +593,7 @@ static int rt_thread_update_threads(struct rtos *rtos)
 		 printf("first = 0x%08x\n",(int)params_thread_first->thread_address);
 		 printf("current = 0x%08x\n",(int)params_thread_current->thread_address);
          }
-        
+ 
 	struct thread_detail *thread_detail = &rtos->thread_details[0];
 	printf("the first name = %s\n", thread_detail->thread_name_str);
 	printf("the first address = 0x%08x\n", (int)params->threads->thread_address);
