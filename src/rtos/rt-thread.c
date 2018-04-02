@@ -534,17 +534,19 @@ static int rt_thread_update_threads(struct rtos *rtos)
    struct rt_thread_params_thread * params_thread_first = NULL;
    struct rt_thread_params_thread * params_thread_current = NULL;
    struct rt_thread_params_thread * params_thread_next = params->threads;
-   for(i = 0; i < params->num_threads; i++)
+
+   size_t index;
+   for(index = 0; index < params->num_threads; index++)
    {
         if (params_thread_next == NULL)
              break;
 
-        if (i == params->num_threads - 1)
+        if (index == params->num_threads - 1)
         {
              params_thread_first = params_thread_next;
         }
         
-        if (i == params->num_threads - current_index - 1)
+        if (index == params->num_threads - current_index - 1)
         {
              params_thread_current = params_thread_next;
         }
@@ -553,10 +555,10 @@ static int rt_thread_update_threads(struct rtos *rtos)
 
     if( params_thread_first != NULL && params_thread_current != NULL)
     {
-         struct rt_thread_params_thread temp;
-         memcpy(&temp, params_thread_first, sizeof(struct rt_thread_params_thread));
-         params_thread_first->address = params_thread_current->address;    
-         params_thread_current->address = temp.address;
+         struct rt_thread_params_thread params_temp;
+         memcpy(&params_temp, params_thread_first, sizeof(struct rt_thread_params_thread));
+         params_thread_first->thread_address = params_thread_current->thread_address;    
+         params_thread_current->thread_address = params_temp.thread_address;
     }
         
 	struct thread_detail *thread_detail = &rtos->thread_details[0];
