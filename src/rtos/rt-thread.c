@@ -240,7 +240,6 @@ static int rt_thread_find_thread_address(struct rtos *rtos, threadid_t threadid,
 	thread_index = threadid - params->threadid_start;
 	thread_index = params->num_threads - thread_index;
 
-	//printf("thread_index = %d\n", (int)thread_index);
 	if (thread_index >= params->num_threads) {
 		LOG_ERROR("rt-thread: failed to find thread address");
 		return ERROR_FAIL;
@@ -267,7 +266,6 @@ static int rt_thread_find_last_thread_address(struct rtos *rtos, symbol_address_
 
 	symbol_address_t object_list_address = 0;
 	symbol_address_t thread_list_address = 0;
-	//symbol_address_t thread_prev_address = 0;
 	symbol_address_t thread_list_head_address = 0;
 	
 	/*get the object_list of rt_object_container */
@@ -286,9 +284,7 @@ static int rt_thread_find_last_thread_address(struct rtos *rtos, symbol_address_
 	num = 0;
 	thread_list_head_address = thread_list_address;
 	*thread_address = thread_list_address;
-	//thread_prev_address = thread_list_address;
 
-	//printf("num=%d, thread_list_address = 0x%08x\n", (int)num, (int)thread_list_address);
 	/* advance to end of thread list */
 	do{
 	         retval = target_read_memory(rtos->target,
@@ -305,10 +301,8 @@ static int rt_thread_find_last_thread_address(struct rtos *rtos, symbol_address_
 			break;
 		}
                 thread_list_address -= params->thread_next_offset;
-		//thread_prev_address = *thread_address;
 		*thread_address = thread_list_address;
 		num++;
-	        //printf("num=%d, thread_list_address = 0x%08x\n", (int)num, (int)thread_list_address);
         } while (thread_list_address != 0 && thread_list_address != thread_list_head_address);
         
 	//*thread_address = thread_prev_address;
@@ -502,11 +496,9 @@ static int rt_thread_update_threads(struct rtos *rtos)
 			return retval;
 		}
 
-		//printf("thread_address = 0x%08x, id=%d\n", (int)thread_address, (int)thread_detail->threadid);
 		if (thread_address == current_thread_address){
 			rtos->current_thread = thread_detail->threadid;
                         current_index = i;
-                        //printf("rtos->current_thread = %d\n", (int)rtos->current_thread);
 		}
 
 		thread_detail->exists = true;
@@ -523,7 +515,6 @@ static int rt_thread_update_threads(struct rtos *rtos)
 		thread_str_buffer[sizeof(thread_str_buffer) - 1] = '\0';
 		thread_detail->thread_name_str = strdup(thread_str_buffer);
 
-		//printf("name = %s\n", thread_detail->thread_name_str);
 		/* read thread extra info */
 		uint8_t thread_state;
 		uint8_t thread_priority;
@@ -555,7 +546,6 @@ static int rt_thread_update_threads(struct rtos *rtos)
 				thread_state_str, thread_priority);
 		thread_detail->extra_info_str = strdup(thread_str_buffer);
 
-		//printf("info_str = %s\n", thread_detail->extra_info_str);
 		/* read previous thread address */
 		retval = target_read_memory(rtos->target,
 				thread_address + params->thread_prev_offset,
@@ -608,15 +598,8 @@ static int rt_thread_update_threads(struct rtos *rtos)
                  memcpy(&params_temp, params_thread_first, sizeof(struct rt_thread_params_thread));
                  params_thread_first->thread_address = params_thread_current->thread_address;    
                  params_thread_current->thread_address = params_temp.thread_address;
-		 
-		 printf("first = 0x%08x\n",(int)params_thread_first->thread_address);
-		 printf("current = 0x%08x\n",(int)params_thread_current->thread_address);
          }
  
-	//struct thread_detail *thread_detail = &rtos->thread_details[0];
-	//printf("the first name = %s\n", thread_detail->thread_name_str);
-	//printf("the first address = 0x%08x\n", (int)params->threads->thread_address);
-		 
 	printf("current_thread_address = 0x%08x\n",(int)current_thread_address);
 
 	return ERROR_OK;
@@ -630,7 +613,6 @@ static int rt_thread_get_thread_reg_list(struct rtos *rtos, threadid_t threadid,
 	/* find thread address for threadid */
 	symbol_address_t thread_address = 0;
 
-	//printf("get reg list threadid = %d\n", (int)threadid);
 	retval = rt_thread_find_thread_address(rtos, threadid, &thread_address);
 	if (retval != ERROR_OK) {
 		LOG_ERROR("rt-thread: failed to find thread address");
