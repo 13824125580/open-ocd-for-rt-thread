@@ -32,9 +32,11 @@
 #define RT_THREAD_MAX_STRLEN 32
 #endif
 
+#define MY_RT_THREAD 0
+
 struct rt_thread_params_thread
 {
-	struct rt_thread_params_thread * next;
+        struct rt_thread_params_thread * next;
 	struct rt_thread_params_thread * prev;
 	symbol_address_t thread_address;
 };
@@ -59,8 +61,8 @@ struct rt_thread_params {
 };
 
 static const struct stack_register_offset rtos_rt_thread_arm926_stack_offsets[] = {
-#if 0
-	{ 0x08, 32 },	/* r0   */
+#if MY_RT_THREAD  //for my rt-thread code, the first value in stack is fcse
+       { 0x08, 32 },	/* r0   */
        { 0x0c, 32 },	/* r1   */
        { 0x10, 32 },	/* r2   */
        { 0x14, 32 },	/* r3   */
@@ -77,30 +79,34 @@ static const struct stack_register_offset rtos_rt_thread_arm926_stack_offsets[] 
        { 0x3c, 32 },	/* lr   */
        { 0x40, 32 },	/* pc   */
        { 0x04, 32 },	/* SPSR */
+#else //for rt-thread mainline
+       { 0x04, 32 },	/* r0   */
+       { 0x08, 32 },	/* r1   */
+       { 0x0c, 32 },	/* r2   */
+       { 0x10, 32 },	/* r3   */
+       { 0x14, 32 },	/* r4   */
+       { 0x18, 32 },	/* r5   */
+       { 0x1c, 32 },	/* r6   */
+       { 0x20, 32 },	/* r7   */
+       { 0x24, 32 },	/* r8   */
+       { 0x28, 32 },	/* r9   */
+       { 0x2c, 32 },	/* r10  */
+       { 0x30, 32 },	/* r11  */
+       { 0x34, 32 },	/* r12  */
+       { -2,   32 },	/* sp   */
+       { 0x38, 32 },	/* lr   */
+       { 0x3c, 32 },	/* pc   */
+       { 0x00, 32 },	/* SPSR */
 #endif
-    { 0x08, 32 },	/* r0   */
-       { 0x0c, 32 },	/* r1   */
-       { 0x10, 32 },	/* r2   */
-       { 0x14, 32 },	/* r3   */
-       { 0x18, 32 },	/* r4   */
-       { 0x1c, 32 },	/* r5   */
-       { 0x20, 32 },	/* r6   */
-       { 0x24, 32 },	/* r7   */
-       { 0x28, 32 },	/* r8   */
-       { 0x2c, 32 },	/* r9   */
-       { 0x30, 32 },	/* r10  */
-       { 0x34, 32 },	/* r11  */
-       { 0x38, 32 },	/* r12  */
-       { -2,   32 },	/* sp   */
-       { 0x3c, 32 },	/* lr   */
-       { 0x40, 32 },	/* pc   */
-       { 0x04, 32 },	/* SPSR */
-
 };
 
 
 const struct rtos_register_stacking rtos_rt_thread_arm926_stacking = {
+#if MY_RT_THREAD
        0x44,										/* stack_registers_size */
+#else
+       0x40,
+#endif
        -1,									        /* stack_growth_direction */
        ARRAY_SIZE(rtos_rt_thread_arm926_stack_offsets),	                                /* num_output_registers */
        rtos_generic_stack_align8,				                        /* stack_alignment */
@@ -194,7 +200,6 @@ static int rt_thread_find_or_create_thread(struct rtos *rtos, symbol_address_t t
 	size_t thread_index;
 
         rt_thread_params_thread_t params_thread_t = params->threads;
-        //rt_thread_params_thread_t params_thread_t_prev = NULL;
 	
 	for (thread_index = 0; thread_index < params->num_threads; thread_index++)
 	{
@@ -203,7 +208,6 @@ static int rt_thread_find_or_create_thread(struct rtos *rtos, symbol_address_t t
 		if (params_thread_t->thread_address == thread_address)
 			goto found;
 		else{
-			//params_thread_t_prev = params_thread_t;
 			params_thread_t = params_thread_t->next;
 		}
 	}
@@ -305,7 +309,6 @@ static int rt_thread_find_last_thread_address(struct rtos *rtos, symbol_address_
 		num++;
         } while (thread_list_address != 0 && thread_list_address != thread_list_head_address);
         
-	//*thread_address = thread_prev_address;
 	*thread_count = num;
 	return ERROR_OK;
 }
@@ -558,8 +561,8 @@ static int rt_thread_update_threads(struct rtos *rtos)
 			return retval;
 		}
 	}
-
-        struct thread_detail temp;
+        
+	struct thread_detail temp;
 	memcpy(&temp, &rtos->thread_details[0],sizeof(struct thread_detail));
 	memcpy(&rtos->thread_details[0], &rtos->thread_details[current_index], sizeof(struct thread_detail));
 	memcpy(&rtos->thread_details[current_index], &temp, sizeof(struct thread_detail));
@@ -567,7 +570,8 @@ static int rt_thread_update_threads(struct rtos *rtos)
 	rtos->thread_details[current_index].threadid = rtos->thread_details[0].threadid;
 	rtos->thread_details[0].threadid = temp.threadid;
 	
-	rtos->current_thread = 0 + params->threadid_start; 
+	//rtos->current_thread = 0 + params->threadid_start; 
+	rtos->current_thread = rtos->thread_details[0].threadid;
 
    
         struct rt_thread_params_thread * params_thread_first = NULL;
@@ -599,8 +603,6 @@ static int rt_thread_update_threads(struct rtos *rtos)
                  params_thread_first->thread_address = params_thread_current->thread_address;    
                  params_thread_current->thread_address = params_temp.thread_address;
          }
- 
-	printf("current_thread_address = 0x%08x\n",(int)current_thread_address);
 
 	return ERROR_OK;
 }
