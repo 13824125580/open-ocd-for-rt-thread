@@ -1,0 +1,5 @@
+#!/bin/sh
+OPENOCD_INSTALL_PATH=/usr/local
+OPENOCD_SCRIPT_PATH=$OPENOCD_INSTALL_PATH/share/openocd/scripts
+
+$OPENOCD_INSTALL_PATH/bin/openocd -f $OPENOCD_SCRIPT_PATH/interface/jlink.cfg -f $OPENOCD_SCRIPT_PATH/target/allwinner_1707.cfg

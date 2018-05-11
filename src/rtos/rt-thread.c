@@ -32,7 +32,7 @@
 #define RT_THREAD_MAX_STRLEN 32
 #endif
 
-#define MY_RT_THREAD 0
+#define MY_RT_THREAD 1
 
 struct rt_thread_params_thread
 {
